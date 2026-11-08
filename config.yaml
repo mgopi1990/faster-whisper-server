@@ -1,0 +1,8 @@
+models:
+  - id: base
+    name: base
+    path: Systran/faster-whisper-base
+    config:
+      model: base
+      device: cuda
+      compute_type: float16
