@@ -95,13 +95,24 @@ Recordings are written directly as WAV, so FFmpeg is not needed. If
 
 ### Command-line options
 
+Pass `--input` to transcribe an existing WAV or MP3 without recording:
+
+```bash
+python faster-whisper-text.py --input "output/meeting.wav"
+python faster-whisper-text.py --input "output/meeting.mp3" --model base
+```
+
+The transcript is saved beside the input file. Its filename includes up to 32
+characters from the transcription; the input audio filename is unchanged.
+
 ```text
---output PATH       WAV audio output path (default: output/<timestamp>.wav)
+--input PATH        Existing .wav or .mp3 file to transcribe (default: None)
+--output PATH       WAV recording path; otherwise timestamped file in output/
 --url URL           Transcription API URL (default:
                     http://127.0.0.1:8000/v1/audio/transcriptions)
 --model NAME        Model name configured on the server (default: base)
 --samplerate HZ     Recording sample rate (default: 16000)
---duration SECONDS  Stop after this many seconds instead of waiting for Ctrl+C
+--duration SECONDS  Recording duration; default: record until Ctrl+C
 ```
 
 Examples:

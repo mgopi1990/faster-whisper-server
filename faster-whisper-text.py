@@ -149,23 +149,33 @@ def transcribe_audio(file_path: Path, url: str = DEFAULT_URL, model_name: str = 
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Record microphone input until Ctrl+C, then upload to the Faster Whisper server.")
-    parser.add_argument("--output", default=None, help="WAV audio output path, default: output/YYYYMMDD-HHMMSS.wav")
+    parser = argparse.ArgumentParser(
+        description="Record microphone input or transcribe an audio file with Faster Whisper.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    parser.add_argument("--input", default=None, help="Existing .wav or .mp3 file to transcribe instead of recording")
+    parser.add_argument("--output", default=None, help="WAV recording path (recording mode only)")
     parser.add_argument("--url", default=DEFAULT_URL, help="Transcription API URL")
-    parser.add_argument("--model", default="base", help="Model name as configured in the server")
-    parser.add_argument("--samplerate", type=int, default=16000, help="Audio sample rate")
-    parser.add_argument("--duration", type=float, default=None, help="Optional fixed recording duration in seconds; otherwise record until Ctrl+C")
+    parser.add_argument("--model", default="base", help="Model name as configured on the server")
+    parser.add_argument("--samplerate", type=int, default=16000, help="Recording sample rate")
+    parser.add_argument("--duration", type=float, default=None, help="Optional recording duration in seconds; otherwise record until Ctrl+C")
     args = parser.parse_args()
 
-    timestamp = datetime.now().strftime(DEFAULT_FILE_FORMAT)
-    if args.output is None:
-        audio_file = OUTPUT_DIR / f"{timestamp}.wav"
-    else:
-        audio_file = Path(args.output)
-        audio_file.parent.mkdir(parents=True, exist_ok=True)
-
-    print(f"Recording until Ctrl+C. Output: {audio_file}")
     try:
+        if args.input is not None:
+            if args.output is not None or args.duration is not None:
+                parser.error("--output and --duration can only be used when recording")
+            transcribe_audio(Path(args.input), url=args.url, model_name=args.model)
+            return
+
+        timestamp = datetime.now().strftime(DEFAULT_FILE_FORMAT)
+        if args.output is None:
+            audio_file = OUTPUT_DIR / f"{timestamp}.wav"
+        else:
+            audio_file = Path(args.output)
+            audio_file.parent.mkdir(parents=True, exist_ok=True)
+
+        print(f"Recording until Ctrl+C. Output: {audio_file}")
         record_push_to_talk(audio_file, samplerate=args.samplerate, duration=args.duration)
         transcribe_audio(audio_file, url=args.url, model_name=args.model)
     except KeyboardInterrupt:
