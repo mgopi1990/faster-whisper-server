@@ -5,8 +5,6 @@ import os
 import shutil
 import subprocess
 import sys
-import termios
-import tty
 import wave
 from datetime import datetime
 from pathlib import Path
@@ -31,25 +29,6 @@ TEXT_DIR = Path("text")
 
 AUDIO_DIR.mkdir(exist_ok=True)
 TEXT_DIR.mkdir(exist_ok=True)
-
-
-def _disable_terminal_echo():
-    if not sys.stdin.isatty():
-        return None
-
-    fd = sys.stdin.fileno()
-    old = termios.tcgetattr(fd)
-    tty.setcbreak(fd)
-    new = termios.tcgetattr(fd)
-    new[3] = new[3] & ~termios.ECHO
-    termios.tcsetattr(fd, termios.TCSADRAIN, new)
-    return old
-
-
-def _restore_terminal_echo(old):
-    if old is None:
-        return
-    termios.tcsetattr(sys.stdin.fileno(), termios.TCSADRAIN, old)
 
 
 def _print_recording_progress(elapsed: float, last_tick: int):
