@@ -82,9 +82,12 @@ python faster-whisper-text.py
 ```
 
 The script records until you press `Ctrl+C`, then uploads the audio for
-transcription. It also stops automatically after five minutes. By default, the
-recording is saved as `output/YYYYMMDD-HHMMSS.wav`, and the transcript is saved
-as `output/YYYYMMDD-HHMMSS.txt`.
+transcription. It also stops automatically after five minutes. By default,
+recordings and transcripts are saved under `output/`. After transcription, the
+first 32 characters of the recognized text are added to the transcript filename
+only, with spaces replaced by underscores. For example, the audio remains
+`output/20261109-123456.wav`, and its transcript is saved as
+`output/20261109-123456_turn_left_at_the.txt`.
 
 Recordings are written directly as WAV, so FFmpeg is not needed. If
 `transcribe_audio` is used with an existing MP3 file, the request uses the
@@ -115,7 +118,8 @@ python faster-whisper-text.py \
 
 The requested duration cannot exceed the five-minute recording limit. The
 `--output` option changes the WAV recording path; it must end in `.wav`.
-Transcripts are written to `output/` using the audio filename's stem.
+The transcript is saved beside the recording with the recognized-text suffix
+in its filename; the audio filename is unchanged.
 
 ## Output
 

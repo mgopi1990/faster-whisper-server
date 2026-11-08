@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import re
 import sys
 import wave
 from datetime import datetime
@@ -20,6 +21,7 @@ DEFAULT_URL = "http://127.0.0.1:8000/v1/audio/transcriptions"
 DEFAULT_FILE_FORMAT = "%Y%m%d-%H%M%S"
 MAX_RECORDING_TIME_SECONDS = 5 * 60
 RECORDING_PROGRESS_INTERVAL_SECONDS = 5
+TRANSCRIPT_FILENAME_ADDITIONAL_LENGTH = 32
 AUDIO_CONTENT_TYPES = {".wav": "audio/wav", ".mp3": "audio/mpeg"}
 
 OUTPUT_DIR = Path("output")
@@ -103,6 +105,12 @@ def _audio_file_stats(path: Path):
     return size, duration
 
 
+def _transcription_suffix(text: str):
+    snippet = text[:TRANSCRIPT_FILENAME_ADDITIONAL_LENGTH]
+    suffix = "".join(char if char.isalnum() or char in "_-" else "_" for char in snippet)
+    return re.sub(r"_+", "_", suffix).strip("_-")
+
+
 def record_push_to_talk(output_path: Path, samplerate: int = 16000, channels: int = 1, duration: float | None = None):
     if output_path.suffix.lower() != ".wav":
         raise ValueError("Recording output must use the .wav extension.")
@@ -130,8 +138,9 @@ def transcribe_audio(file_path: Path, url: str = DEFAULT_URL, model_name: str = 
 
     payload = response.json() if response.headers.get("Content-Type", "").startswith("application/json") else {"text": response.text}
     text = payload.get("text", "")
-    base_name = file_path.stem
-    text_out = OUTPUT_DIR / f"{base_name}.txt"
+    suffix = _transcription_suffix(text)
+    text_stem = f"{file_path.stem}-{suffix}" if suffix else file_path.stem
+    text_out = file_path.with_name(f"{text_stem}.txt")
     text_out.write_text(text, encoding="utf-8")
     print(f"saved transcript: {text_out}")
     print("Transcript:")
