@@ -21,7 +21,6 @@ instance and saves the transcription as a text file.
 - A working microphone and audio input device.
 - PortAudio, required by `sounddevice` (on Debian/Ubuntu, install
   `libportaudio2`).
-- FFmpeg, recommended for converting recordings to MP3.
 - A running faster-whisper-server instance. GPU support is optional; the
   supplied configuration uses CUDA.
 
@@ -41,7 +40,7 @@ On Debian/Ubuntu, install the system audio and conversion utilities with:
 
 ```bash
 sudo apt update
-sudo apt install libportaudio2 ffmpeg
+sudo apt install libportaudio2
 ```
 
 The first server startup may need internet access to download the configured
@@ -84,13 +83,17 @@ python faster-whisper-text.py
 
 The script records until you press `Ctrl+C`, then uploads the audio for
 transcription. It also stops automatically after five minutes. By default, the
-recording is saved as `output/YYYYMMDD-HHMMSS.mp3`, and the transcript is saved
+recording is saved as `output/YYYYMMDD-HHMMSS.wav`, and the transcript is saved
 as `output/YYYYMMDD-HHMMSS.txt`.
+
+Recordings are written directly as WAV, so FFmpeg is not needed. If
+`transcribe_audio` is used with an existing MP3 file, the request uses the
+`audio/mpeg` content type; WAV uploads use `audio/wav`.
 
 ### Command-line options
 
 ```text
---output PATH       Audio output path (default: output/<timestamp>.mp3)
+--output PATH       WAV audio output path (default: output/<timestamp>.wav)
 --url URL           Transcription API URL (default:
                     http://127.0.0.1:8000/v1/audio/transcriptions)
 --model NAME        Model name configured on the server (default: base)
@@ -106,20 +109,19 @@ python faster-whisper-text.py --duration 30
 
 # Use a custom output file and server URL
 python faster-whisper-text.py \
-  --output output/meeting.mp3 \
+  --output output/meeting.wav \
   --url http://127.0.0.1:8000/v1/audio/transcriptions
 ```
 
 The requested duration cannot exceed the five-minute recording limit. The
-`--output` option changes the audio path; transcripts are written to `output/`
-using the audio filename's stem.
+`--output` option changes the WAV recording path; it must end in `.wav`.
+Transcripts are written to `output/` using the audio filename's stem.
 
 ## Output
 
-- `output/`: recorded audio files and UTF-8 transcription files.
+- `output/`: WAV recordings and UTF-8 transcription files.
 
-The directory is created automatically when the script starts. Temporary WAV
-recordings are removed after successful conversion.
+The directory is created automatically when the script starts.
 
 ## Troubleshooting
 
@@ -127,7 +129,8 @@ recordings are removed after successful conversion.
   running and that `--url` matches its host and port.
 - **Microphone or PortAudio errors:** Check that an input device is available
   and that PortAudio is installed.
-- **MP3 conversion errors:** Install FFmpeg and ensure `ffmpeg` is on `PATH`.
+- **Large recordings:** WAV files are uncompressed. A five-minute mono
+  16 kHz, 16-bit recording is approximately 9.6 MB.
 - **PyAV `metadata_errors` error:** The installed `av` package must remain
   below version 19; `requirements.txt` pins the compatible version.
 - **CUDA or compute-type errors:** Adjust `device` and `compute_type` in

@@ -1,9 +1,6 @@
 #!/usr/bin/env python3
 
 import argparse
-import os
-import shutil
-import subprocess
 import sys
 import wave
 from datetime import datetime
@@ -23,6 +20,7 @@ DEFAULT_URL = "http://127.0.0.1:8000/v1/audio/transcriptions"
 DEFAULT_FILE_FORMAT = "%Y%m%d-%H%M%S"
 MAX_RECORDING_TIME_SECONDS = 5 * 60
 RECORDING_PROGRESS_INTERVAL_SECONDS = 5
+AUDIO_CONTENT_TYPES = {".wav": "audio/wav", ".mp3": "audio/mpeg"}
 
 OUTPUT_DIR = Path("output")
 
@@ -42,7 +40,7 @@ def _print_recording_progress(elapsed: float, last_tick: int):
     return last_tick
 
 
-def _record_temp_wav(output_path: Path, samplerate: int = 16000, channels: int = 1, duration: float | None = None):
+def _record_wav(output_path: Path, samplerate: int = 16000, channels: int = 1, duration: float | None = None):
     frames = []
     stream = sd.InputStream(samplerate=samplerate, channels=channels, dtype="int16")
     stream.start()
@@ -96,25 +94,6 @@ def _record_temp_wav(output_path: Path, samplerate: int = 16000, channels: int =
     return total_seconds
 
 
-def _convert_to_mp3(wav_path: Path, mp3_path: Path):
-    if mp3_path.exists():
-        mp3_path.unlink()
-
-    ffmpeg_bin = shutil.which("ffmpeg")
-    if ffmpeg_bin is None:
-        print(f"ffmpeg not found; writing WAV copy as {mp3_path}")
-        mp3_path.write_bytes(wav_path.read_bytes())
-        return mp3_path
-
-    subprocess.run(
-        [ffmpeg_bin, "-y", "-i", str(wav_path), "-codec:a", "libmp3lame", "-q:a", "2", str(mp3_path)],
-        check=True,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
-    return mp3_path
-
-
 def _audio_file_stats(path: Path):
     with wave.open(str(path), "rb") as wav:
         frames = wav.getnframes()
@@ -125,22 +104,27 @@ def _audio_file_stats(path: Path):
 
 
 def record_push_to_talk(output_path: Path, samplerate: int = 16000, channels: int = 1, duration: float | None = None):
-    temp_wav = output_path.with_suffix(".wav")
-    recorded_seconds = _record_temp_wav(temp_wav, samplerate=samplerate, channels=channels, duration=duration)
-    size_bytes, wav_seconds = _audio_file_stats(temp_wav)
-    final_path = _convert_to_mp3(temp_wav, output_path)
-    temp_wav.unlink(missing_ok=True)
-    print(f"stopped after: {recorded_seconds:.2f}s | saved audio: {final_path.name} | size: {final_path.stat().st_size} bytes | wav duration: {wav_seconds:.2f}s")
-    return final_path
+    if output_path.suffix.lower() != ".wav":
+        raise ValueError("Recording output must use the .wav extension.")
+
+    recorded_seconds = _record_wav(output_path, samplerate=samplerate, channels=channels, duration=duration)
+    size_bytes, audio_seconds = _audio_file_stats(output_path)
+    print(f"stopped after: {recorded_seconds:.2f}s | saved audio: {output_path.name} | size: {size_bytes} bytes | duration: {audio_seconds:.2f}s")
+    return output_path
 
 
 def transcribe_audio(file_path: Path, url: str = DEFAULT_URL, model_name: str = "base"):
     if not file_path.exists():
         raise FileNotFoundError(f"Audio file not found: {file_path}")
+    try:
+        content_type = AUDIO_CONTENT_TYPES[file_path.suffix.lower()]
+    except KeyError:
+        supported_types = ", ".join(sorted(AUDIO_CONTENT_TYPES))
+        raise ValueError(f"Unsupported audio file extension {file_path.suffix!r}; expected one of: {supported_types}") from None
 
     print("sending to server...")
     with open(file_path, "rb") as f:
-        files = {"file": (file_path.name, f, "audio/mpeg")}
+        files = {"file": (file_path.name, f, content_type)}
         data = {"model_name": model_name, "response_format": "json"}
         response = requests.post(url, files=files, data=data, timeout=300)
 
@@ -157,7 +141,7 @@ def transcribe_audio(file_path: Path, url: str = DEFAULT_URL, model_name: str = 
 
 def main():
     parser = argparse.ArgumentParser(description="Record microphone input until Ctrl+C, then upload to the Faster Whisper server.")
-    parser.add_argument("--output", default=None, help="Audio output file path, default: output/YYYYMMDD-HHMMSS.mp3")
+    parser.add_argument("--output", default=None, help="WAV audio output path, default: output/YYYYMMDD-HHMMSS.wav")
     parser.add_argument("--url", default=DEFAULT_URL, help="Transcription API URL")
     parser.add_argument("--model", default="base", help="Model name as configured in the server")
     parser.add_argument("--samplerate", type=int, default=16000, help="Audio sample rate")
@@ -166,7 +150,7 @@ def main():
 
     timestamp = datetime.now().strftime(DEFAULT_FILE_FORMAT)
     if args.output is None:
-        audio_file = OUTPUT_DIR / f"{timestamp}.mp3"
+        audio_file = OUTPUT_DIR / f"{timestamp}.wav"
     else:
         audio_file = Path(args.output)
         audio_file.parent.mkdir(parents=True, exist_ok=True)
