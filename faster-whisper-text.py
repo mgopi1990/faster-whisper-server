@@ -24,11 +24,9 @@ DEFAULT_FILE_FORMAT = "%Y%m%d-%H%M%S"
 MAX_RECORDING_TIME_SECONDS = 5 * 60
 RECORDING_PROGRESS_INTERVAL_SECONDS = 5
 
-AUDIO_DIR = Path("audio")
-TEXT_DIR = Path("text")
+OUTPUT_DIR = Path("output")
 
-AUDIO_DIR.mkdir(exist_ok=True)
-TEXT_DIR.mkdir(exist_ok=True)
+OUTPUT_DIR.mkdir(exist_ok=True)
 
 
 def _print_recording_progress(elapsed: float, last_tick: int):
@@ -149,7 +147,7 @@ def transcribe_audio(file_path: Path, url: str = DEFAULT_URL, model_name: str = 
     payload = response.json() if response.headers.get("Content-Type", "").startswith("application/json") else {"text": response.text}
     text = payload.get("text", "")
     base_name = file_path.stem
-    text_out = TEXT_DIR / f"{base_name}.txt"
+    text_out = OUTPUT_DIR / f"{base_name}.txt"
     text_out.write_text(text, encoding="utf-8")
     print(f"saved transcript: {text_out}")
     print("Transcript:")
@@ -159,7 +157,7 @@ def transcribe_audio(file_path: Path, url: str = DEFAULT_URL, model_name: str = 
 
 def main():
     parser = argparse.ArgumentParser(description="Record microphone input until Ctrl+C, then upload to the Faster Whisper server.")
-    parser.add_argument("--output", default=None, help="Output file path, default: audio/YYYYMMDD-HHMMSS.mp3")
+    parser.add_argument("--output", default=None, help="Audio output file path, default: output/YYYYMMDD-HHMMSS.mp3")
     parser.add_argument("--url", default=DEFAULT_URL, help="Transcription API URL")
     parser.add_argument("--model", default="base", help="Model name as configured in the server")
     parser.add_argument("--samplerate", type=int, default=16000, help="Audio sample rate")
@@ -168,7 +166,7 @@ def main():
 
     timestamp = datetime.now().strftime(DEFAULT_FILE_FORMAT)
     if args.output is None:
-        audio_file = AUDIO_DIR / f"{timestamp}.mp3"
+        audio_file = OUTPUT_DIR / f"{timestamp}.mp3"
     else:
         audio_file = Path(args.output)
         audio_file.parent.mkdir(parents=True, exist_ok=True)

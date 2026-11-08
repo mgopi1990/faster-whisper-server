@@ -11,7 +11,7 @@ instance and saves the transcription as a text file.
   after five minutes.
 - Shows recording progress with one `#` every five seconds and a numbered line
   for each minute.
-- Saves recordings under `audio/` and transcripts under `text/` by default.
+- Saves recordings and transcripts together under `output/` by default.
 - Lets you configure the server URL, model, sample rate, duration, and output
   path with command-line options.
 
@@ -84,13 +84,13 @@ python faster-whisper-text.py
 
 The script records until you press `Ctrl+C`, then uploads the audio for
 transcription. It also stops automatically after five minutes. By default, the
-recording is saved as `audio/YYYYMMDD-HHMMSS.mp3`, and the transcript is saved
-as `text/YYYYMMDD-HHMMSS.txt`.
+recording is saved as `output/YYYYMMDD-HHMMSS.mp3`, and the transcript is saved
+as `output/YYYYMMDD-HHMMSS.txt`.
 
 ### Command-line options
 
 ```text
---output PATH       Audio output path (default: audio/<timestamp>.mp3)
+--output PATH       Audio output path (default: output/<timestamp>.mp3)
 --url URL           Transcription API URL (default:
                     http://127.0.0.1:8000/v1/audio/transcriptions)
 --model NAME        Model name configured on the server (default: base)
@@ -106,21 +106,20 @@ python faster-whisper-text.py --duration 30
 
 # Use a custom output file and server URL
 python faster-whisper-text.py \
-  --output audio/meeting.mp3 \
+  --output output/meeting.mp3 \
   --url http://127.0.0.1:8000/v1/audio/transcriptions
 ```
 
 The requested duration cannot exceed the five-minute recording limit. The
-`--output` option changes the audio path; transcripts continue to be written
-under `text/` using the audio filename's stem.
+`--output` option changes the audio path; transcripts are written to `output/`
+using the audio filename's stem.
 
 ## Output
 
-- `audio/`: recorded audio files.
-- `text/`: UTF-8 transcription files.
+- `output/`: recorded audio files and UTF-8 transcription files.
 
-Both directories are created automatically when the script starts. Temporary
-WAV recordings are removed after successful conversion.
+The directory is created automatically when the script starts. Temporary WAV
+recordings are removed after successful conversion.
 
 ## Troubleshooting
 
@@ -141,6 +140,5 @@ WAV recordings are removed after successful conversion.
 ├── config.yaml
 ├── faster-whisper-text.py
 ├── requirements.txt
-├── audio/
-└── text/
+└── output/
 ```
